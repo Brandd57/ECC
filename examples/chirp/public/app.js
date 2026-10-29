@@ -1,4 +1,4 @@
-/* global document, fetch, localStorage, location, window */
+/* global document, location, window */
 'use strict';
 
 const MAX_LENGTH = 280;
@@ -49,8 +49,7 @@ function chirpCard(chirp, onChange) {
     class: `link${chirp.liked ? ' on' : ''}`,
     onclick: async () => {
       try {
-        Object.assign(chirp, await api(chirp.liked ? 'DELETE' : 'PUT', `/chirps/${chirp.id}/like`));
-        card.replaceWith(chirpCard(chirp, onChange));
+        Object.assign(chirp, await api(chirp.liked ? 'DELETE' : 'PUT', `/chirps/${chirp.id}/like`));        card.replaceWith(chirpCard(chirp, onChange));
       } catch (error) { card.append(errorBox(error)); }
     }
   }, `${chirp.liked ? 'Unlike' : 'Like'} (${chirp.likes})`);
@@ -77,16 +76,21 @@ function chirpCard(chirp, onChange) {
 // Paged list with a "Load more" button driven by the `before` id cursor.
 function chirpList(path) {
   const list = h('div');
+  const empty = h('p', { class: 'muted' }, 'Nothing here yet.');
   const more = h('button', { class: 'ghost', hidden: '' }, 'Load more');
   let last = null;
+  const syncEmpty = () => {
+    if (list.querySelector('.chirp')) empty.remove();
+    else list.append(empty);
+  };
   async function load() {
     try {
       const sep = path.includes('?') ? '&' : '?';
       const items = await api('GET', last ? `${path}${sep}before=${last}` : path);
-      for (const chirp of items) list.append(chirpCard(chirp));
+      for (const chirp of items) list.append(chirpCard(chirp, syncEmpty));
       if (items.length) last = items[items.length - 1].id;
       more.hidden = items.length < 20;
-      if (!last) list.append(h('p', { class: 'muted' }, 'Nothing here yet.'));
+      syncEmpty();
     } catch (error) { list.append(errorBox(error)); }
   }
   more.addEventListener('click', load);
